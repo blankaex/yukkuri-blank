@@ -10,10 +10,7 @@ def main
   # initialize
   api = ENV["VOICEVOX_URI"]
   options = parseOpts()
-  script = loadScript()
-
-  # parse video script
-  lines = parseScript(script, options[:all])
+  lines = loadScript(options[:all])
   abort("Nothing to do.") if lines.empty?
 
   # generate tts
@@ -53,13 +50,8 @@ def parseOpts()
   return options
 end
 
-def loadScript()
-  script = ARGV[0]
-  abort "No script file provided" unless script
-  return script
-end
-
-def parseScript(script, all)
+def loadScript(all)
+  script = ARGV[0] || abort("No script file provided")
   lines = File.readlines(script, chomp: true)
   lines = lines.each_with_index.map { |text, i| [i + 1, text] }
 
