@@ -7,13 +7,11 @@ require "uri"
 require "json"
 
 def main
-  # initialize
   api = ENV["VOICEVOX_URI"]
   options = parseOpts()
   lines = loadScript(options[:all])
   abort("Nothing to do.") if lines.empty?
 
-  # generate tts
   print "Initializing speaker..."
   initSpeaker(api)
   print "\r\e[KSpeaker initialized.\n"
@@ -39,14 +37,15 @@ def parseOpts()
   OptionParser.new do |opts|
     opts.banner = "Usage: #{$0} [options] FILE"
 
-    opts.on("-a", "--all", "Generate TTS for every line in file") do
-      options[:all] = true
-    end
-
     opts.on("-o DIR", "--output DIR", "Specify output directory for synthesized audio") do |dir|
       options[:output] = dir
     end
+
+    opts.on("-a", "--all", "Generate TTS for every line in file") do
+      options[:all] = true
+    end
   end.parse!
+
   return options
 end
 
