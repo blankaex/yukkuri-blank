@@ -6,7 +6,7 @@ require "net/http"
 require "uri"
 require "json"
 
-def main()
+def main
   # initialize
   api = ENV["VOICEVOX_URI"]
   options = parseOpts()
@@ -14,23 +14,26 @@ def main()
 
   # parse video script
   lines = parseScript(script, options[:all])
+  abort("Nothing to do.") if lines.empty?
 
   # generate tts
   print "Initializing speaker..."
   initSpeaker(api)
   print "\r\e[KSpeaker initialized.\n"
 
-  lines.each do | index, line |
-    print "\r\e[K[#{format("%04d.wav", index)}] Generating query..."
+  lines.each do |index, line|
+    curr = "\r\e[K[#{format("%04d.wav", index)}]"
+
+    print "#{curr} Generating query..."
     query = generateAudioQuery(api, line)
 
-    print "\r\e[K[#{format("%04d.wav", index)}] Synthesizing audio..."
+    print "#{curr} Synthesizing audio..."
     audio = synthesizeAudio(api, query)
 
-    print "\r\e[K[#{format("%04d.wav", index)}] Writing audio..."
+    print "#{curr} Writing audio..."
     writeAudio(index, audio, options[:output])
 
-    print "\r\e[K[#{format("%04d.wav", index)}] Done.\n"
+    print "#{curr} Done.\n"
   end
 end
 
@@ -43,7 +46,7 @@ def parseOpts()
       options[:all] = true
     end
 
-    opts.on("-o DIR", "--output DIR", "Specify output directory for synthesized audio") do | dir |
+    opts.on("-o DIR", "--output DIR", "Specify output directory for synthesized audio") do |dir|
       options[:output] = dir
     end
   end.parse!
@@ -60,7 +63,7 @@ def parseScript(script, all)
   lines = File.readlines(script, chomp: true)
   lines = lines.each_with_index.map { |text, i| [i + 1, text] }
 
-  if !all
+  unless all
     input = lines.map { |line, text| "#{line}: #{text}" }.join("\n")
 
     selected = IO.popen(["sk", "--multi", "--reverse"], "r+") do |io|
@@ -69,7 +72,7 @@ def parseScript(script, all)
       io.read
     end
 
-    selected.lines.map do |line|
+    lines = selected.lines.map do |line|
       line_number, text = line.chomp.split(": ", 2)
       [line_number.to_i, text]
     end
@@ -84,7 +87,7 @@ def initSpeaker(api)
 
   request = Net::HTTP::Post.new(uri)
 
-  response = Net::HTTP.start(uri.host, uri.port, use_ssl: true) do |http|
+  response = Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == "https") do |http|
     http.request(request)
   end
 
@@ -97,7 +100,7 @@ end
 def generateAudioQuery(api, line)
   uri = URI(api + "/audio_query_from_preset")
   uri.query = URI.encode_www_form(
-    text: "#{line}",
+    text: line,
     preset_id: 0,
     enable_katakana_english: true
   )
@@ -105,7 +108,7 @@ def generateAudioQuery(api, line)
   request = Net::HTTP::Post.new(uri)
   request["Accept"] = "application/json"
 
-  response = Net::HTTP.start(uri.host, uri.port, use_ssl: true) do |http|
+  response = Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == "https") do |http|
     http.request(request)
   end
 
@@ -129,7 +132,7 @@ def synthesizeAudio(api, query)
   request["Content-Type"] = "application/json"
   request.body = JSON.generate(query)
 
-  response = Net::HTTP.start(uri.host, uri.port, use_ssl: true) do |http|
+  response = Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == "https") do |http|
     http.request(request)
   end
 
@@ -150,4 +153,4 @@ def writeAudio(index, audio, output)
   File.binwrite(File.join(output, filename), audio)
 end
 
-main()
+main
