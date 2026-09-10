@@ -136,8 +136,8 @@ def synthesizeAudio(api, query)
 end
 
 def writeAudio(index, audio, output)
-  # outputs to `$PWD/output/` if not specified
-  output ||= "output"
+  # outputs to `$PWD/audio/` if not specified
+  output ||= "audio"
   FileUtils.mkdir_p(output)
 
   filename = format("%04d.wav", index)

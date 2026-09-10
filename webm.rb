@@ -15,9 +15,10 @@ def main
   print "Files loaded.\n"
 
   lines.each do |file, line|
-    print "[#{file}] Generating webm...\n"
-    generateWebm(file, line, options[:source])
-    print "[#{file}] Done.\n"
+    curr = File.join(options[:output], "#{File.basename(file, File.extname(file))}.webm")
+    print "[#{curr}] Generating webm...\n"
+    generateWebm(file, line, curr)
+    print "[#{curr}] Done.\n"
   end
 end
 
@@ -40,6 +41,7 @@ def parseOpts()
   end.parse!
 
   abort("Input directory not provided") unless options[:source]
+  options[:output] = options[:source] unless options[:output]
   return options
 end
 
@@ -70,7 +72,7 @@ end
 def generateWebm(
   file,
   line,
-  source,
+  output,
   width: 1920,
   height: 1080,
   fps: 30,
@@ -125,15 +127,17 @@ def generateWebm(
       "-stats",
       "-f", "lavfi",
       "-i", "color=c=black@0.0:s=#{width}x#{height}:r=#{fps}:d=#{duration},format=rgba",
+      "-channel_layout", "mono",
       "-i", file,
       "-vf", "ass=#{ass_file}:alpha=1,format=rgba",
       "-c:v", "libvpx-vp9",
       "-pix_fmt", "yuva420p",
+      "-crf", "32",
       "-auto-alt-ref", "0",
       "-c:a", "libopus",
       "-b:a", "128k",
       "-shortest",
-      File.join(source, "#{File.basename(file, File.extname(file))}.webm")
+      output
     )
 
     abort "ffmpeg failed for #{file}" unless success
