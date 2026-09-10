@@ -16,8 +16,9 @@ def main
   initSpeaker(api)
   print "\r\e[KSpeaker initialized.\n"
 
+  FileUtils.mkdir_p(options[:output])
   lines.each do |index, line|
-    curr = "\r\e[K[#{format("%04d.wav", index)}]"
+    curr = "\r\e[K[#{File.join(options[:output], format("%04d.wav", index))}]"
 
     print "#{curr} Generating query..."
     query = generateAudioQuery(api, line)
@@ -33,7 +34,9 @@ def main
 end
 
 def parseOpts()
-  options = {}
+  options = {
+    output: "wavs"
+  }
   OptionParser.new do |opts|
     opts.banner = "Usage: #{$0} [options] FILE"
 
@@ -136,10 +139,6 @@ def synthesizeAudio(api, query)
 end
 
 def writeAudio(index, audio, output)
-  # outputs to `$PWD/audio/` if not specified
-  output ||= "audio"
-  FileUtils.mkdir_p(output)
-
   filename = format("%04d.wav", index)
   File.binwrite(File.join(output, filename), audio)
 end

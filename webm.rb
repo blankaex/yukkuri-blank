@@ -14,6 +14,7 @@ def main
 
   print "Files loaded.\n"
 
+  FileUtils.mkdir_p(options[:output])
   lines.each do |file, line|
     curr = File.join(options[:output], "#{File.basename(file, File.extname(file))}.webm")
     print "[#{curr}] Generating webm...\n"
@@ -23,16 +24,19 @@ def main
 end
 
 def parseOpts()
-  options = {}
+  options = {
+    source: "wavs",
+    output: "webms"
+  }
   OptionParser.new do |opts|
     opts.banner = "Usage: #{$0} -i DIR [options] FILE"
 
     opts.on("-i DIR", "--input DIR", "Specify output directory for synthesized audio") do |dir|
-      options[:source] = dir
+      options[:source] = dir.empty? ? "." : dir
     end
 
     opts.on("-o DIR", "--output DIR", "Specify output directory for synthesized audio") do |dir|
-      options[:output] = dir
+      options[:output] = dir.empty? ? "." : dir
     end
 
     opts.on("-a", "--all", "Generate TTS for every line in file") do
@@ -40,15 +44,16 @@ def parseOpts()
     end
   end.parse!
 
-  abort("Input directory not provided") unless options[:source]
-  options[:output] = options[:source] unless options[:output]
   return options
 end
 
 def loadFiles(source, all)
   script = ARGV[0] || abort("No script file provided")
   lines = File.readlines(script, chomp: true)
-  lines = lines.each_with_index.map { |text, i| [File.join(source, format("%04d.wav", i + 1)), text] }
+  lines = lines.each_with_index.filter_map do |text, i|
+    file = File.join(source, format("%04d.wav", i + 1))
+    [file, text] if File.file?(file)
+  end
 
   unless all
     input = lines.map { |file, text| "#{file}: #{text}" }.join("\n")
