@@ -37,10 +37,11 @@ def parseOpts()
   options = {
     output: "wavs"
   }
+
   OptionParser.new do |opts|
     opts.banner = "Usage: #{$0} [options] FILE"
 
-    opts.on("-o DIR", "--output DIR", "Specify output directory for synthesized audio") do |dir|
+    opts.on("-o DIR", "--output DIR", "Specify output directory for synthesized audio [default: ./wavs]") do |dir|
       options[:output] = dir
     end
 

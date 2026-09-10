@@ -28,18 +28,19 @@ def parseOpts()
     source: "wavs",
     output: "webms"
   }
-  OptionParser.new do |opts|
-    opts.banner = "Usage: #{$0} -i DIR [options] FILE"
 
-    opts.on("-i DIR", "--input DIR", "Specify output directory for synthesized audio") do |dir|
+  OptionParser.new do |opts|
+    opts.banner = "Usage: #{$0} [options] FILE"
+
+    opts.on("-i DIR", "--input DIR", "Specify output directory for synthesized audio [default: ./wavs]") do |dir|
       options[:source] = dir.empty? ? "." : dir
     end
 
-    opts.on("-o DIR", "--output DIR", "Specify output directory for synthesized audio") do |dir|
+    opts.on("-o DIR", "--output DIR", "Specify output directory for synthesized audio [default: ./webms]") do |dir|
       options[:output] = dir.empty? ? "." : dir
     end
 
-    opts.on("-a", "--all", "Generate TTS for every line in file") do
+    opts.on("-a", "--all", "Generate WebM for every line in file") do
       options[:all] = true
     end
   end.parse!
