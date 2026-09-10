@@ -2,6 +2,8 @@
 
 Small scripts to automate TTS & subtitle generation for video creation.
 
+https://github.com/user-attachments/assets/540b4ffe-b7da-4cf7-bbea-88dea2956387
+
 ### `tts.rb`
 
 Takes an input text file and prompts user to select lines to TTS.
