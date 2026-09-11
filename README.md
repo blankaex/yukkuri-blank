@@ -17,7 +17,6 @@ Requires a [Voicevox Engine](https://github.com/VOICEVOX/voicevox_engine) server
 ```
 Usage: ./yukkuri-tts.rb [options] FILE
     -a, --all                        Generate TTS for every line in file
-
 ```
 
 ---
