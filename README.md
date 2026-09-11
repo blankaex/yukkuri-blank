@@ -6,7 +6,7 @@ https://github.com/user-attachments/assets/540b4ffe-b7da-4cf7-bbea-88dea2956387
 
 ---
 
-### `tts.rb`
+### `yukkuri-tts.rb`
 
 Takes an input text file and prompts user to select lines to TTS.
 
@@ -21,7 +21,7 @@ Usage: ./yukkuri-tts.rb [options] FILE
 ---
 ```
 
-### `webm.rb`
+### `yukkuri-webm.rb`
 
 Takes an input text file and prompts user to select lines to process.
 
