@@ -1,0 +1,22 @@
+tts:
+  voicevox_uri: "http://127.0.0.1:50021"
+  speaker_id: 122
+  preset_id: 0
+
+webm:
+  width: 1920
+  height: 1080
+  fps: 30
+
+  font: "07AkazukinPop Heavy"
+  font_size: 100
+  font_color: "&H00FDFDFD"
+  outline: 4
+  outline_color: "&H2D7C4262"
+  shadow: 2
+  alignment: 2
+  margin_v: 100
+
+dirs:
+  wavs: "./wavs"
+  webms: "./webms"
