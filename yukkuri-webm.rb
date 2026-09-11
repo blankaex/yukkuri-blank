@@ -50,13 +50,13 @@ def loadConfig()
   return config
 end
 
-def loadFiles(source, options)
+def loadFiles(wavs, options)
   begin
     lines = File.readlines(options[:input], chomp: true)
                      .each_with_index
                      .filter_map do |text, i|
-                       file = File.join(source, format("%04d.wav", i + 1))
-                       [file, text] if File.file?(file)
+                       audio = File.join(wavs, format("%04d.wav", i + 1))
+                       [audio, text] if File.file?(audio)
                      end
   rescue SystemCallError => e
     abort "Failed to read #{options[:input]}: #{e.message}"
@@ -72,9 +72,9 @@ def loadFiles(source, options)
     end
 
     lines = selected.lines.map do |line|
-      file, text = line.chomp.split(": ", 2)
-      abort("[\"#{file}\"] Not found.") unless File.file?(file)
-      [file, text]
+      audio, text = line.chomp.split(": ", 2)
+      abort("[\"#{audio}\"] Not found.") unless File.file?(audio)
+      [audio, text]
     end
   end
   
