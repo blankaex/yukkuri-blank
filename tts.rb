@@ -1,64 +1,74 @@
 #!/usr/bin/env ruby
 
-require "optparse"
 require "fileutils"
-require "net/http"
-require "uri"
 require "json"
+require "net/http"
+require "optparse"
+require "pathname"
+require "uri"
+require "yaml"
 
 def main
-  api = ENV["VOICEVOX_URI"]
   options = parseOpts()
-  lines = loadScript(options[:all])
+  config = loadConfig()
+
+  lines = loadScript(options)
   abort("Nothing to do.") if lines.empty?
 
   print "Initializing speaker..."
-  initSpeaker(api)
+  initSpeaker(config[:tts])
   print "\r\e[KSpeaker initialized.\n"
 
-  FileUtils.mkdir_p(options[:output])
+  FileUtils.mkdir_p(config[:dirs][:wavs])
   lines.each do |index, line|
-    curr = "\r\e[K[#{File.join(options[:output], format("%04d.wav", index))}]"
+    filename = File.join(config[:dirs][:wavs], format("%04d.wav", index))
 
-    print "#{curr} Generating query..."
-    query = generateAudioQuery(api, line)
+    print "\r\e[K[#{filename}] Generating query..."
+    query = generateAudioQuery(config[:tts], line)
 
-    print "#{curr} Synthesizing audio..."
-    audio = synthesizeAudio(api, query)
+    print "\r\e[K[#{filename}] Synthesizing audio..."
+    audio = synthesizeAudio(config[:tts], query)
 
-    print "#{curr} Writing audio..."
-    writeAudio(index, audio, options[:output])
+    print "\r\e[K[#{filename}] Writing audio..."
+    writeAudio(filename, audio)
 
-    print "#{curr} Done.\n"
+    print "\r\e[K[#{filename}] Done.\n"
   end
 end
 
 def parseOpts()
-  options = {
-    output: "wavs"
-  }
-
+  options = {}
   OptionParser.new do |opts|
     opts.banner = "Usage: #{$0} [options] FILE"
-
-    opts.on("-o DIR", "--output DIR", "Specify output directory for synthesized audio [default: ./wavs]") do |dir|
-      options[:output] = dir
-    end
-
     opts.on("-a", "--all", "Generate TTS for every line in file") do
       options[:all] = true
     end
   end.parse!
-
+  options[:input] = ARGV[0]
   return options
 end
 
-def loadScript(all)
-  script = ARGV[0] || abort("No script file provided")
-  lines = File.readlines(script, chomp: true)
-  lines = lines.each_with_index.map { |text, i| [i + 1, text] }
+def loadConfig()
+  begin
+    config = YAML.load_file(File.join(__dir__, "config.yml"), symbolize_names: true)
+  rescue StandardError => e
+    abort("Unable to load config: #{e.message}")
+  end
+  config[:tts][:voicevox_uri] = ENV["VOICEVOX_URI"] if ENV["VOICEVOX_URI"]
+  config[:dirs][:wavs] = Pathname(config[:dirs][:wavs]).cleanpath.to_s
+  return config
+end
 
-  unless all
+def loadScript(options)
+  begin
+    lines = File.readlines(options[:input], chomp: true)
+                     .each_with_index
+                     .map { |text, i| [i + 1, text] }
+  rescue SystemCallError => e
+    abort("Failed to read #{options[:input]}: #{e.message}")
+  end
+
+  unless options[:all]
     input = lines.map { |line, text| "#{line}: #{text}" }.join("\n")
 
     selected = IO.popen(["sk", "--multi", "--reverse"], "r+") do |io|
@@ -76,9 +86,9 @@ def loadScript(all)
   return lines
 end
 
-def initSpeaker(api)
-  uri = URI(api + "/initialize_speaker")
-  uri.query = URI.encode_www_form(speaker: 122, skip_reinit: true)
+def initSpeaker(config)
+  uri = URI(config[:voicevox_uri] + "/initialize_speaker")
+  uri.query = URI.encode_www_form(speaker: config[:speaker_id], skip_reinit: true)
 
   request = Net::HTTP::Post.new(uri)
 
@@ -92,11 +102,11 @@ def initSpeaker(api)
   end
 end
 
-def generateAudioQuery(api, line)
-  uri = URI(api + "/audio_query_from_preset")
+def generateAudioQuery(config, line)
+  uri = URI(config[:voicevox_uri] + "/audio_query_from_preset")
   uri.query = URI.encode_www_form(
     text: line,
-    preset_id: 0,
+    preset_id: config[:preset_id],
     enable_katakana_english: true
   )
 
@@ -115,10 +125,10 @@ def generateAudioQuery(api, line)
   end
 end
 
-def synthesizeAudio(api, query)
-  uri = URI(api + "/synthesis")
+def synthesizeAudio(config, query)
+  uri = URI(config[:voicevox_uri] + "/synthesis")
   uri.query = URI.encode_www_form(
-    speaker: 122,
+    speaker: config[:speaker_id],
     enable_interrogative_upspeak: true
   )
 
@@ -139,9 +149,12 @@ def synthesizeAudio(api, query)
   end
 end
 
-def writeAudio(index, audio, output)
-  filename = format("%04d.wav", index)
-  File.binwrite(File.join(output, filename), audio)
+def writeAudio(filename, audio)
+  begin
+    File.binwrite(filename, audio)
+  rescue SystemCallError => e
+    abort "[#{filename}] Wav generation failed."
+  end
 end
 
 main

@@ -1,62 +1,68 @@
 #!/usr/bin/env ruby
 
-require "optparse"
 require "fileutils"
-require "net/http"
-require "uri"
 require "json"
+require "net/http"
+require "optparse"
+require "pathname"
 require "tmpdir"
+require "uri"
+require "yaml"
 
 def main
   options = parseOpts()
-  lines = loadFiles(options[:source], options[:all])
+  config = loadConfig()
+
+  lines = loadFiles(config[:dirs][:wavs], options)
   abort("Nothing to do.") if lines.empty?
 
   print "Files loaded.\n"
 
-  FileUtils.mkdir_p(options[:output])
-  lines.each do |file, line|
-    curr = File.join(options[:output], "#{File.basename(file, File.extname(file))}.webm")
-    print "[#{curr}] Generating webm...\n"
-    generateWebm(file, line, curr)
-    print "[#{curr}] Done.\n"
+  FileUtils.mkdir_p(config[:dirs][:webms])
+  lines.each do |audio, line|
+    filename = File.join(config[:dirs][:webms], "#{File.basename(audio, File.extname(audio))}.webm")
+    print "[#{filename}] Generating webm...\n"
+    generateWebm(audio, line, filename, config[:webm])
+    print "[#{filename}] Done.\n"
   end
 end
 
 def parseOpts()
-  options = {
-    source: "wavs",
-    output: "webms"
-  }
-
+  options = {}
   OptionParser.new do |opts|
     opts.banner = "Usage: #{$0} [options] FILE"
-
-    opts.on("-i DIR", "--input DIR", "Specify output directory for synthesized audio [default: ./wavs]") do |dir|
-      options[:source] = dir.empty? ? "." : dir
-    end
-
-    opts.on("-o DIR", "--output DIR", "Specify output directory for synthesized audio [default: ./webms]") do |dir|
-      options[:output] = dir.empty? ? "." : dir
-    end
-
     opts.on("-a", "--all", "Generate WebM for every line in file") do
       options[:all] = true
     end
   end.parse!
-
+  options[:input] = ARGV[0]
   return options
 end
 
-def loadFiles(source, all)
-  script = ARGV[0] || abort("No script file provided")
-  lines = File.readlines(script, chomp: true)
-  lines = lines.each_with_index.filter_map do |text, i|
-    file = File.join(source, format("%04d.wav", i + 1))
-    [file, text] if File.file?(file)
+def loadConfig()
+  begin
+    config = YAML.load_file(File.join(__dir__, "config.yml"), symbolize_names: true)
+  rescue StandardError => e
+    abort("Unable to load config: #{e.message}")
+  end
+  config[:dirs][:wavs] = Pathname(config[:dirs][:wavs]).cleanpath.to_s
+  config[:dirs][:webms] = Pathname(config[:dirs][:webms]).cleanpath.to_s
+  return config
+end
+
+def loadFiles(source, options)
+  begin
+    lines = File.readlines(options[:input], chomp: true)
+                     .each_with_index
+                     .filter_map do |text, i|
+                       file = File.join(source, format("%04d.wav", i + 1))
+                       [file, text] if File.file?(file)
+                     end
+  rescue SystemCallError => e
+    abort "Failed to read #{options[:input]}: #{e.message}"
   end
 
-  unless all
+  unless options[:all]
     input = lines.map { |file, text| "#{file}: #{text}" }.join("\n")
 
     selected = IO.popen(["sk", "--multi", "--reverse"], "r+") do |io|
@@ -75,37 +81,24 @@ def loadFiles(source, all)
   return lines
 end
 
-def generateWebm(
-  file,
-  line,
-  output,
-  width: 1920,
-  height: 1080,
-  fps: 30,
-  font: "07AkazukinPop Heavy",
-  font_size: 100,
-  font_color: "&H00FDFDFD",
-  outline_color: "&H2D7C4262",
-  outline: 4,
-  shadow: 2,
-  alignment: 2,
-  margin_v: 100
-)
-  duration = `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "#{file}"`.strip.to_f()
+def generateWebm(audio, line, filename, config)
+  width = config[:width]
+  height = config[:height]
+  fps = config[:fps]
+  font = config[:font]
+  font_size = config[:font_size]
+  font_color = config[:font_color]
+  outline = config[:outline]
+  outline_color = config[:outline_color]
+  shadow = config[:shadow]
+  alignment = config[:alignment]
+  margin_v = config[:margin_v]
 
-  abort("[#{file}] Could not determine audio duration.") if duration <= 0
+  duration = `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "#{audio}"`.strip.to_f()
+  abort("[#{filename}] Could not determine audio duration.") if duration <= 0
 
-  timestamp = format(
-    "%d:%02d:%05.2f",
-    duration / 3600,
-    (duration % 3600) / 60,
-    duration % 60
-  )
-
-  ass_file = File.join(
-    Dir.tmpdir,
-    "subtitle_#{Process.pid}_#{Thread.current.object_id}.ass"
-  )
+  timestamp = format("%d:%02d:%05.2f", duration / 3600, (duration % 3600) / 60, duration % 60)
+  ass_file = File.join(Dir.tmpdir, "subtitle_#{Process.pid}_#{Thread.current.object_id}.ass")
 
   ass = <<~ASS
     [Script Info]
@@ -134,7 +127,7 @@ def generateWebm(
       "-f", "lavfi",
       "-i", "color=c=black@0.0:s=#{width}x#{height}:r=#{fps}:d=#{duration},format=rgba",
       "-channel_layout", "mono",
-      "-i", file,
+      "-i", audio,
       "-vf", "ass=#{ass_file}:alpha=1,format=rgba",
       "-c:v", "libvpx-vp9",
       "-pix_fmt", "yuva420p",
@@ -143,10 +136,10 @@ def generateWebm(
       "-c:a", "libopus",
       "-b:a", "128k",
       "-shortest",
-      output
+      filename
     )
 
-    abort "ffmpeg failed for #{file}" unless success
+    abort("[#{filename}] WebM generation failed.") unless success
   ensure
     File.delete(ass_file) if File.exist?(ass_file)
   end
