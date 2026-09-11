@@ -6,7 +6,7 @@ tts:
 webm:
   width: 1920
   height: 1080
-  fps: 30
+  fps: 12
 
   font: "07AkazukinPop Heavy"
   font_size: 100
