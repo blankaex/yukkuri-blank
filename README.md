@@ -2,7 +2,7 @@
 
 Small scripts to automate TTS & subtitle generation for video creation.
 
-https://github.com/user-attachments/assets/540b4ffe-b7da-4cf7-bbea-88dea2956387
+https://github.com/user-attachments/assets/a821acb3-ee28-4f8b-81b8-50e1924d473a
 
 ---
 
