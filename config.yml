@@ -7,6 +7,7 @@ webm:
   width: 1920
   height: 1080
   fps: 12
+  padding: 0.25
 
   font: "07AkazukinPop Heavy"
   font_size: 100

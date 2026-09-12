@@ -86,6 +86,7 @@ def generateWebm(audio, line, filename, config)
   height = config[:height]
   fps = config[:fps]
   font = config[:font]
+  padding = config[:padding]
   font_size = config[:font_size]
   font_color = config[:font_color]
   outline = config[:outline]
@@ -94,8 +95,9 @@ def generateWebm(audio, line, filename, config)
   alignment = config[:alignment]
   margin_v = config[:margin_v]
 
-  duration = `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "#{audio}"`.strip.to_f()
-  abort("[#{filename}] Could not determine audio duration.") if duration <= 0
+  audioLength = `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "#{audio}"`.strip.to_f()
+  abort("[#{filename}] Could not determine audio length.") if audioLength <= 0
+  duration = audioLength + padding
 
   timestamp = format("%d:%02d:%05.2f", duration / 3600, (duration % 3600) / 60, duration % 60)
   ass_file = File.join(Dir.tmpdir, "subtitle_#{Process.pid}_#{Thread.current.object_id}.ass")
@@ -129,6 +131,7 @@ def generateWebm(audio, line, filename, config)
       "-channel_layout", "mono",
       "-i", audio,
       "-vf", "ass=#{ass_file}:alpha=1,format=rgba",
+      "-af", "apad=pad_dur=#{padding}",
       "-c:v", "libvpx-vp9",
       "-pix_fmt", "yuva420p",
       "-crf", "32",
