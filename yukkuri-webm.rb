@@ -22,7 +22,7 @@ def main
   lines.each do |audio, line|
     filename = File.join(config[:dirs][:webms], "#{File.basename(audio, File.extname(audio))}.webm")
     print "[#{filename}] Generating webm...\n"
-    generateWebm(audio, line, filename, config[:webm])
+    generateWebm(audio, line, filename, config[:webm], options)
     print "[#{filename}] Done.\n"
   end
 end
@@ -33,6 +33,9 @@ def parseOpts()
     opts.banner = "Usage: #{$0} [options] FILE"
     opts.on("-a", "--all", "Generate WebM for every line in file") do
       options[:all] = true
+    end
+    opts.on("-n", "--max-line-length LENGTH", Integer, "Override maximum line length") do |length|
+      options[:max_line_length] = length
     end
   end.parse!
   options[:input] = ARGV[0]
@@ -81,7 +84,27 @@ def loadFiles(wavs, options)
   return lines
 end
 
-def generateWebm(audio, line, filename, config)
+def wrapText(text, maxLength)
+  phrases = IO.popen(["budoux", text], &:read).lines(chomp: true)
+  maxLength += 12 if text.scan(/[A-Za-z]/).length > 16
+
+  lines = []
+  currentLine = ""
+
+  phrases.each do |phrase|
+    if currentLine.length + phrase.length > maxLength && !currentLine.empty?
+      lines << currentLine
+      currentLine = phrase
+    else
+      currentLine << phrase
+    end
+  end
+
+  lines << currentLine unless currentLine.empty?
+  return lines.join("\\N")
+end
+
+def generateWebm(audio, line, filename, config, options)
   width = config[:width]
   height = config[:height]
   fps = config[:fps]
@@ -94,6 +117,7 @@ def generateWebm(audio, line, filename, config)
   shadow = config[:shadow]
   alignment = config[:alignment]
   margin_v = config[:margin_v]
+  max_line_length = options[:max_line_length] || config[:max_line_length]
 
   audioLength = `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "#{audio}"`.strip.to_f()
   abort("[#{filename}] Could not determine audio length.") if audioLength <= 0
@@ -105,7 +129,7 @@ def generateWebm(audio, line, filename, config)
   ass = <<~ASS
     [Script Info]
     ScriptType: v4.00+
-    WrapStyle: 0
+    WrapStyle: 2
     PlayResX: #{width}
     PlayResY: #{height}
 
@@ -115,7 +139,7 @@ def generateWebm(audio, line, filename, config)
 
     [Events]
     Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
-    Dialogue: 0,0:00:00.00,#{timestamp},Default,,0,0,0,,#{line}
+    Dialogue: 0,0:00:00.00,#{timestamp},Default,,0,0,0,,#{wrapText(line, max_line_length)}
   ASS
 
   begin

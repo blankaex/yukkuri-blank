@@ -17,6 +17,7 @@ webm:
   shadow: 2
   alignment: 2
   margin_v: 100
+  max_line_length: 24
 
 dirs:
   wavs: "./wavs"

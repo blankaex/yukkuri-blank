@@ -27,9 +27,10 @@ Takes an input text file and prompts user to select lines to process.
 
 Outputs transparent `.webm`s with styled subtitles, timed to the length of corresponding TTS.
 
-Requires [ffmpeg](https://github.com/ffmpeg/ffmpeg) and optionally the [Akazukin Pop](https://flopdesign.booth.pm/items/1748058) font.
+Requires [skim](https://github.com/skim-rs/skim), [ffmpeg](https://github.com/ffmpeg/ffmpeg), [budoux](https://github.com/google/budoux) and optionally the [Akazukin Pop](https://flopdesign.booth.pm/items/1748058) font.
 
 ```
 Usage: ./yukkuri-webm.rb [options] FILE
     -a, --all                        Generate WebM for every line in file
+    -n, --max-line-length LENGTH     Override maximum line length
 ```
