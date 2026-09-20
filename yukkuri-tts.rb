@@ -21,6 +21,7 @@ def main
 
   FileUtils.mkdir_p(config[:dirs][:wavs])
   lines.each do |index, line|
+    next if line.strip.empty?
     filename = File.join(config[:dirs][:wavs], format("%04d.wav", index))
 
     print "\r\e[K[#{filename}] Generating query..."
