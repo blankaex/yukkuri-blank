@@ -86,7 +86,7 @@ end
 
 def wrapText(text, maxLength)
   phrases = IO.popen(["budoux", text], &:read).lines(chomp: true)
-  maxLength += 12 if text.scan(/[A-Za-z]/).length > 16
+  maxLength += text.scan(/[A-Za-z]/).length / 2
 
   lines = []
   currentLine = ""
